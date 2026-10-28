@@ -1,0 +1,123 @@
+%% Warehouse Receiving System - Entity Relationship Diagram
+%% Source of truth for column details: docs/database-design.md (SQL DDL)
+%% Derived from: docs/prd.md (FR-*, BR-*, NFR-4)
+
+erDiagram
+    users {
+        bigint id PK "identity"
+        varchar(255) name
+        varchar(255) email UK "unique, case-insensitive"
+        varchar(255) password "hashed"
+        varchar(20) role "OPERATOR or SUPERVISOR"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    personal_access_tokens {
+        bigint id PK "Laravel Sanctum table"
+        varchar(255) tokenable_type "polymorphic, always User"
+        bigint tokenable_id FK "users.id"
+        varchar(255) name
+        varchar(64) token UK "hashed"
+        timestamptz last_used_at
+        timestamptz expires_at
+        timestamptz created_at
+    }
+
+    products {
+        bigint id PK "identity"
+        varchar(50) sku UK "uppercase, unique"
+        varchar(255) name
+        bigint created_by FK "users.id"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    inventory {
+        bigint product_id PK, FK "one row per product"
+        bigint quantity_on_hand "CHECK >= 0"
+        timestamptz updated_at
+    }
+
+    document_number_sequences {
+        date sequence_date PK "one row per day"
+        int last_number "CHECK >= 1"
+    }
+
+    receiving_documents {
+        bigint id PK "identity"
+        varchar(30) document_number UK "RCV-YYYYMMDD-NNNN"
+        varchar(255) supplier_name
+        date expected_date
+        varchar(1000) notes "nullable"
+        varchar(30) status "DRAFT OPEN PARTIALLY_RECEIVED COMPLETED CANCELLED"
+        bigint created_by FK "users.id"
+        bigint status_changed_by FK "users.id, nullable"
+        timestamptz status_changed_at "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    receiving_items {
+        bigint id PK "identity"
+        bigint receiving_document_id FK "receiving_documents.id"
+        bigint product_id FK "products.id"
+        int expected_quantity "CHECK 1 to 1000000"
+        int received_quantity "CHECK 0 to expected_quantity"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    receipts {
+        bigint id PK "identity, append-only"
+        bigint receiving_item_id FK "receiving_items.id"
+        int quantity "CHECK > 0"
+        bigint received_by FK "users.id"
+        timestamptz created_at
+    }
+
+    inventory_transactions {
+        bigint id PK "identity, append-only"
+        bigint product_id FK "products.id"
+        varchar(20) type "RECEIVE"
+        int quantity "CHECK > 0"
+        bigint balance_after "stock after this transaction"
+        bigint receipt_id FK, UK "receipts.id, one per receipt"
+        bigint receiving_item_id FK "receiving_items.id"
+        bigint receiving_document_id FK "receiving_documents.id"
+        bigint created_by FK "users.id"
+        timestamptz created_at
+    }
+
+    idempotency_keys {
+        bigint id PK "identity"
+        bigint user_id FK "users.id"
+        varchar(100) endpoint "scope of the key"
+        varchar(128) idempotency_key "unique with user and endpoint"
+        char(64) request_hash "SHA-256 of request content"
+        bigint receipt_id FK "receipts.id"
+        smallint response_status
+        jsonb response_body
+        timestamptz created_at
+    }
+
+    users ||--o{ personal_access_tokens : "owns"
+    users ||--o{ products : "creates"
+    users ||--o{ receiving_documents : "creates"
+    users ||--o{ receiving_documents : "last changed status of"
+    users ||--o{ receipts : "records"
+    users ||--o{ inventory_transactions : "causes"
+    users ||--o{ idempotency_keys : "sends"
+
+    products ||--|| inventory : "has stock row"
+    products ||--o{ receiving_items : "is expected in"
+    products ||--o{ inventory_transactions : "has history"
+
+    receiving_documents ||--|{ receiving_items : "contains"
+    receiving_documents ||--o{ inventory_transactions : "is referenced by"
+
+    receiving_items ||--o{ receipts : "is received by"
+    receiving_items ||--o{ inventory_transactions : "is referenced by"
+
+    receipts ||--|| inventory_transactions : "produces"
+    receipts ||--o| idempotency_keys : "is stored result of"
