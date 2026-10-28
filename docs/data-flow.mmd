@@ -1,0 +1,71 @@
+%% Warehouse Receiving System - Data Flow Diagram
+%% Shows how information moves from the users, through the Next.js frontend and the
+%% Laravel API, to PostgreSQL and back.
+%% Numbered edges (1 to 11) follow the main receiving workflow (record a receipt).
+%% Edges without a number are the other flows (login, products, documents, reads).
+%% Details: docs/technical-spec.md sections 9 and 10, docs/database-design.md section 6.3
+
+flowchart LR
+    OP["Warehouse Operator"]
+    SV["Warehouse Supervisor"]
+
+    subgraph FE["Next.js frontend"]
+        UI["Pages and forms<br/>role-aware UI"]
+        APIC["API client<br/>Bearer token<br/>Idempotency-Key"]
+    end
+
+    subgraph BE["Laravel REST API"]
+        MW["Auth and role middleware<br/>401 and 403"]
+        VAL["Form Requests<br/>input validation 422"]
+        CTRL["Controllers<br/>thin, no business rules"]
+        SVC["Services<br/>business rules<br/>DB transactions and locks"]
+        ERR["Exception handler<br/>one JSON error shape"]
+    end
+
+    subgraph DB["PostgreSQL"]
+        TUSER[("users<br/>personal_access_tokens")]
+        TPROD[("products<br/>inventory")]
+        TDOC[("receiving_documents<br/>receiving_items<br/>document_number_sequences")]
+        TREC[("receipts<br/>inventory_transactions")]
+        TIDEM[("idempotency_keys")]
+    end
+
+    %% ---- people to UI and UI to API
+    OP -->|"1 enters received quantity"| UI
+    SV -->|"creates products and documents<br/>confirms, completes, cancels"| UI
+    UI -->|"form data"| APIC
+    APIC -->|"2 POST receipt<br/>token, key, quantity"| MW
+
+    %% ---- request pipeline
+    MW -->|"3 role allowed"| VAL
+    VAL -->|"valid input"| CTRL
+    CTRL -->|"4 call service"| SVC
+    MW <-->|"verify token<br/>login credentials"| TUSER
+
+    %% ---- main receiving workflow inside one DB transaction
+    SVC -->|"5 lock document and item<br/>check status and remaining"| TDOC
+    SVC -->|"6 look up idempotency key"| TIDEM
+    SVC -->|"7 increase received_quantity"| TDOC
+    SVC -->|"8 insert receipt<br/>insert ledger row"| TREC
+    SVC -->|"9 increase quantity_on_hand"| TPROD
+    SVC -->|"10 store response<br/>for safe replay"| TIDEM
+
+    %% ---- other writes
+    SVC -->|"create product<br/>and stock row 0"| TPROD
+    SVC -->|"create or edit draft<br/>change status<br/>next document number"| TDOC
+
+    %% ---- reads
+    TPROD -.->|"products, stock"| SVC
+    TDOC -.->|"documents, items"| SVC
+    TREC -.->|"receipt history<br/>transaction history"| SVC
+
+    %% ---- response path
+    SVC -->|"11 result"| CTRL
+    CTRL -->|"JSON data envelope"| APIC
+    SVC -. "business rule violation<br/>409 or 422" .-> ERR
+    VAL -. "validation failure" .-> ERR
+    MW -. "not authenticated or forbidden" .-> ERR
+    ERR -.->|"error code and message"| APIC
+    APIC -->|"updated screen<br/>or readable error"| UI
+    UI --> OP
+    UI --> SV
