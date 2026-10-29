@@ -112,20 +112,29 @@ Every task block ends with a log table to fill in.
 ```text
 Task T0: project skeleton.
 
-Read first: .github/copilot-instructions.md, docs/technical-spec.md (sections 1.2, 3, 14),
+Read first: .github/copilot-instructions.md, docs/technical-spec.md (sections 1.2, 3, 5.6, 14),
 docs/openapi.yaml (only the /health operation).
 
 Goal: create the empty but runnable skeleton of the system.
-- backend/: new Laravel project for PostgreSQL (pgsql), timezone UTC, Sanctum installed,
-  API only (no sessions or cookies). Implement GET /api/v1/health exactly as in openapi.yaml
+- backend/: new Laravel 13 project (PHP 8.5.12) for PostgreSQL (pgsql), timezone UTC, Sanctum installed,
+  PHPUnit (not Pest), API only (no sessions or cookies). Implement GET /api/v1/health exactly as in openapi.yaml
   (SELECT 1; 200 {"status":"ok","database":"ok"} or 503 {"status":"error","database":"unreachable"}).
-- frontend/: new Next.js project (App Router, TypeScript strict, Tailwind) with a placeholder home page.
-- backend/Dockerfile (multi-stage, php:8.3-apache, pdo_pgsql) and backend/docker/entrypoint.sh
-  following section 14.1; frontend/Dockerfile (standalone output, NEXT_PUBLIC_API_URL as build arg).
+- frontend/: new Next.js project (latest stable, App Router, JAVASCRIPT only, Tailwind, ESLint, src dir,
+  alias @/*) running on Node.js 24.22.1 (.nvmrc). Initialize shadcn/ui with the preset I give you
+  (Luma, Mist, Emerald, Outfit, Lucide, default radius): run `npx shadcn@latest init --preset <PRESET_CODE> --base radix`
+  with PRESET_CODE = <paste the code from ui.shadcn.com/create>. Confirm components.json has "tsx": false and
+  "iconLibrary": "lucide", Outfit is applied to body and headings, and components/ui contains .jsx files.
+  Add the Button component as a smoke test. Install zod, react-hook-form, @hookform/resolvers, @tanstack/react-query.
+  Add a placeholder home page built only from shadcn components.
+- backend/Dockerfile (multi-stage, php:8.5.12-apache, pdo_pgsql) and backend/docker/entrypoint.sh
+  following section 14.1; frontend/Dockerfile (node:24.22.1-alpine, standalone output,
+  NEXT_PUBLIC_API_URL as build arg). If an image tag does not exist, tell me and use the closest patch version.
 - docker-compose.yml with db, backend, frontend, healthchecks, and depends_on service_healthy.
 - .env.example with every variable from section 14.2 (placeholders only) and a proper .gitignore.
 
-Constraints: no business tables or endpoints yet, no secrets, pinned image tags, no extra dependencies.
+Constraints: no business tables or endpoints yet, no secrets, pinned image tags, no extra dependencies,
+no TypeScript files. Your built-in knowledge may predate Laravel 13 and the current shadcn CLI: read the
+official docs when unsure.
 
 Before coding: give a short plan and list your assumptions.
 After: summarize the files you created and anything you could not verify.
@@ -170,7 +179,7 @@ Before coding: give a plan and list assumptions. After: list the constraints you
 anything in the document you found ambiguous. Do not change docs/.
 ```
 
-**Log**: same table as T0 (`TODO`).
+**Log**
 
 | Field | Entry |
 |---|---|
@@ -441,20 +450,24 @@ Report honestly any scenario that is flaky or that you could not reproduce.
 Task T8: frontend foundation.
 
 Read first: .github/copilot-instructions.md, .github/instructions/frontend.instructions.md,
-docs/technical-spec.md (sections 5.1, 5.2, 5.5), docs/openapi.yaml (Auth operations, Error schema).
+docs/technical-spec.md (sections 5.1, 5.2, 5.5, 5.6), docs/openapi.yaml (Auth operations, Error schema).
 
 Goal:
-- npm script generate:api-types using openapi-typescript from docs/openapi.yaml into src/lib/api/types.ts.
-- src/lib/api/client.ts (only place that uses fetch): base URL from NEXT_PUBLIC_API_URL, headers, bearer
-  token, typed ApiError, 401 handling.
+- src/lib/api/client.js (only place that uses fetch): base URL from NEXT_PUBLIC_API_URL, headers, bearer
+  token, ApiError in src/lib/api/errors.js (checks the error body shape with Zod), 401 handling.
+- Zod schemas in src/lib/schemas for login, product, receiving document (with items), and receipt,
+  mirroring docs/prd.md section 8.2.
 - AuthProvider with token storage, /auth/me loading, logout; route guard; app layout with navigation
   that reflects the role; TanStack Query provider.
 - Login page. Placeholder pages for the other routes in section 5.1.
-- Reusable pieces: ErrorAlert (shows message and field errors), StatusBadge, Pagination, loading and
-  empty states.
+- Add the shadcn components from the mapping table in section 5.6 that these pieces need (npx shadcn@latest add ...).
+- Reusable pieces built ONLY from shadcn components: ErrorAlert (Alert, shows message and field errors),
+  StatusBadge (Badge, one variant per status), pagination (Pagination), loading and empty states
+  (Skeleton, Empty), and a confirm dialog helper (AlertDialog).
 
 Tests (Vitest and Testing Library): the API client turns the standard error shape into ApiError, 401
-clears the token, navigation shows only allowed items for each role.
+clears the token, navigation shows only allowed items for each role, the Zod schemas accept and reject
+the cases of PRD section 8.2.
 Do not build the feature pages yet.
 ```
 
@@ -477,8 +490,8 @@ Run this as two chats: **T9a** (products, document list, create, edit, detail re
 Task T9a: products and receiving document pages.
 
 Read first: .github/copilot-instructions.md, .github/instructions/frontend.instructions.md,
-docs/technical-spec.md (sections 5.1 to 5.3, 5.5), docs/prd.md (FR-UI-2, FR-UI-3, FR-UI-4, FR-UI-8),
-docs/openapi.yaml.
+docs/technical-spec.md (sections 5.1 to 5.3, 5.5, 5.6), docs/prd.md (FR-UI-2, FR-UI-3, FR-UI-4, FR-UI-8),
+docs/openapi.yaml. Use ONLY shadcn/ui components and the Zod schemas in src/lib/schemas for every form.
 
 Goal: /products (list, search, create form for Supervisors only), /receiving-documents (list, status
 filter, search, pagination), /receiving-documents/new and /[id]/edit (one shared form with an items editor
@@ -494,7 +507,8 @@ Add component tests for the form (duplicate product hint, backend error display)
 Task T9b: receipt form, lifecycle actions, inventory pages.
 
 Read first: .github/copilot-instructions.md, .github/instructions/frontend.instructions.md,
-docs/technical-spec.md (sections 5.3, 5.4, 10.2), docs/prd.md (US-09, US-10, FR-UI-5 to FR-UI-9).
+docs/technical-spec.md (sections 5.3, 5.4, 5.6, 10.2), docs/prd.md (US-09, US-10, FR-UI-5 to FR-UI-9).
+Use ONLY shadcn/ui components (Confirm, Complete, Cancel go through AlertDialog).
 
 Goal: on /receiving-documents/[id]: the receipt form per item and the Confirm, Complete, Cancel, Edit
 buttons shown by role and status exactly as the table in section 5.3 ("Ready to complete" when
@@ -554,7 +568,7 @@ Do not change application behavior in this task. Report any defect you find inst
 
 The technical review may ask for a requirement to be changed and the implementation updated. This exercise practices that on a **separate branch** and shows how the specification-first approach works when requirements change.
 
-**Example change:** "Allow a Supervisor to cancel a `PARTIALLY_RECEIVED` document only if no stock was received yet" is meaningless, so use a real one: "Operators may also create `DRAFT` documents, but only Supervisors can confirm them."
+**Example change:** "Operators may also create `DRAFT` documents, but only Supervisors can confirm them." Replace it with another realistic change if you prefer, but keep it small and affecting both the documents and the code.
 
 **Prompt**
 
@@ -611,7 +625,9 @@ Applied to every diff before committing.
 
 ### 8.3 Frontend
 
-- [ ] `fetch` is used only in `lib/api/client.ts`. Generated types were not edited by hand.
+- [ ] `fetch` is used only in `lib/api/client.js`. No TypeScript files, `tsconfig.json`, or generated types were added.
+- [ ] Every UI element is a shadcn/ui component. No other UI library, no hand-built buttons, tables, or dialogs, no hard-coded colors, fonts, or radius, icons only from `lucide-react`.
+- [ ] Forms use Zod schemas with React Hook Form, and server field errors are copied into the form.
 - [ ] No business rule is computed in the UI.
 - [ ] Role and status handling matches `technical-spec.md` section 5.3.
 - [ ] Idempotency key behavior matches section 5.4.
@@ -661,7 +677,7 @@ Details and outputs are in `docs/testing.md`. Commands used to verify the agent'
 |---|---|
 | Backend tests | `docker compose exec backend php artisan test` |
 | Code style | `docker compose exec backend ./vendor/bin/pint --test` |
-| Frontend checks | `npm run lint`, `npx tsc --noEmit`, `npm test` |
+| Frontend checks | `npm run lint`, `npm test` |
 | End to end | `npx playwright test` (stack running) |
 | Concurrency demonstration | `scripts/concurrency-demo.sh` |
 | Integrity queries | SQL from `database-design.md` section 9, expected zero rows |

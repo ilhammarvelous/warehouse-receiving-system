@@ -24,18 +24,23 @@ Replace the warehouse's spreadsheets with a web application for registering inbo
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Backend | **Laravel** (latest stable major at project start), PHP 8.3 or newer | REST API, validation, Eloquent ORM, migrations, Sanctum tokens |
-| Frontend | **Next.js** (latest stable major at project start), App Router, TypeScript | Browser UI that calls the API |
-| UI styling | Tailwind CSS | No component library required |
-| Frontend data fetching | TanStack Query with a small typed `fetch` client | Cache invalidation after mutations |
+| Runtimes | **PHP 8.5.12**, **Node.js 24.22.1** | Fixed requirements. Pinned in the Dockerfiles, `.nvmrc`, and the README. |
+| Backend | **Laravel 13**, PHP 8.5.12 | REST API, validation, Eloquent ORM, migrations, Sanctum tokens |
+| Frontend | **Next.js** (latest stable at project start), App Router, **JavaScript** (no TypeScript), path alias `@/*` via `jsconfig.json` | Browser UI that calls the API |
+| UI components | **shadcn/ui**, custom preset (Section 5.6) | **Every UI element must be a shadcn/ui component** |
+| UI styling | Tailwind CSS (version installed by the shadcn/Next.js initializers) | Colors, radius, and fonts come from the preset's design tokens |
+| Fonts | **Outfit** for headings and body | Loaded with `next/font/google` by the preset setup |
+| Icons | **lucide-react** | The only icon library |
+| Form validation | **Zod**, with React Hook Form and `@hookform/resolvers` | Client-side hints only; the backend is the authority (BR-24) |
+| Frontend data fetching | TanStack Query with a small `fetch` client | Cache invalidation after mutations |
 | Database | **PostgreSQL 16** | Row locks, `CHECK` constraints, triggers |
 | Authentication | Laravel Sanctum personal access tokens (bearer) | A-15 |
-| Backend tests | PHPUnit (Laravel feature and unit tests) against real PostgreSQL | Not SQLite: the design relies on PostgreSQL-specific constraints, triggers, and locks |
+| Backend tests | PHPUnit (Laravel feature and unit tests) against real PostgreSQL | Not SQLite: the design relies on PostgreSQL-specific constraints, triggers, and locks. Choose PHPUnit, not Pest, when scaffolding. |
 | Frontend tests | Vitest and React Testing Library (components), Playwright (end-to-end) | |
 | Containers | Docker and Docker Compose | `db`, `backend`, `frontend` |
 | API contract | OpenAPI 3.0.3 | `openapi.yaml` |
 
-Exact versions are pinned in `composer.lock` and `package-lock.json` and listed in the README at the end of implementation. Do not use `latest` tags for container images.
+PHP 8.5.12 and Node.js 24.22.1 are required versions. The Docker base images use exactly these versions (`php:8.5.12-apache`, `node:24.22.1-alpine`). If a tag does not exist on Docker Hub, use the closest available patch version of the same minor release and record the real version in the README. Laravel 13, Next.js, and all other packages are pinned by `composer.lock` and `package-lock.json`, and their installed versions are listed in the README at the end of implementation. Do not use `latest` tags for container images.
 
 ### 1.3 Key design decisions
 
@@ -48,8 +53,10 @@ Exact versions are pinned in `composer.lock` and `package-lock.json` and listed 
 | D-5 | Idempotency keys stored in the database | FR-RCV-6. No extra infrastructure. |
 | D-6 | Role checks in route middleware, not in the UI | FR-AUTH-5. |
 | D-7 | No implicit route-model binding for documents and items. Services load rows themselves, with locks. | Gives a fixed error precedence (Section 8.5) and makes locking explicit. |
-| D-8 | Types in the frontend are generated from `openapi.yaml` | Prevents drift between frontend and backend. |
+| D-8 | The frontend is plain JavaScript. Forms are validated with Zod schemas, and the API error shape is parsed in one place (`ApiError`). No types are generated. | JavaScript has no static types, so drift between frontend and backend is caught by the Playwright tests and the backend contract tests instead. |
 | D-9 | The browser calls the API directly, with CORS restricted to the frontend origin | NFR-6. |
+| D-10 | Every UI element is a shadcn/ui component, styled only through the preset's design tokens | Consistent, accessible UI with little custom CSS. Rules in Section 5.6. |
+| D-11 | Zod validation in the browser is a usability hint and mirrors PRD section 8.2. It never replaces backend validation. | BR-24. |
 
 ---
 
@@ -137,12 +144,20 @@ warehouse-receiving-system/
 │   ├── tests/{Unit,Feature,Concurrency}/
 │   ├── docker/entrypoint.sh
 │   └── Dockerfile
-├── frontend/                        Next.js application
+├── frontend/                        Next.js application (JavaScript)
+│   ├── components.json              shadcn/ui configuration (preset, aliases, tsx: false)
+│   ├── jsconfig.json                path alias @/*
+│   ├── .nvmrc                       24.22.1
 │   ├── src/
-│   │   ├── app/                     routes (App Router)
+│   │   ├── app/                     routes (App Router), .js and .jsx files
 │   │   ├── components/
-│   │   ├── lib/api/                 client.ts, types.ts (generated), idempotency.ts
-│   │   └── lib/auth/                token storage, AuthProvider
+│   │   │   ├── ui/                  shadcn/ui components, added with the CLI
+│   │   │   └── ...                  app components composed only from components/ui
+│   │   └── lib/
+│   │       ├── api/                 client.js, errors.js, idempotency.js, query hooks
+│   │       ├── schemas/             Zod schemas (login, product, document, receipt)
+│   │       ├── auth/                token storage, AuthProvider
+│   │       └── utils.js             cn() helper created by shadcn
 │   ├── tests/e2e/                   Playwright
 │   └── Dockerfile
 ├── .github/copilot-instructions.md  agent instructions
@@ -275,8 +290,9 @@ Unauthenticated users are redirected to `/login`. A Supervisor-only route opened
 
 ### 5.2 Structure and conventions
 
-- `lib/api/client.ts`: the only place that calls `fetch`. It adds the base URL (`NEXT_PUBLIC_API_URL`), `Accept` and `Content-Type` headers, and the `Authorization` header. It parses the standard error shape into a typed `ApiError { status, code, message, details }`. On `401` it clears the token and redirects to `/login`.
-- `lib/api/types.ts` is **generated** from `openapi.yaml` with `openapi-typescript` (npm script `generate:api-types`). Do not edit it by hand.
+- `lib/api/client.ts`: the only place that calls `fetch`. It adds the base URL (`NEXT_PUBLIC_API_URL`), `Accept` and `Content-Type` headers, and the `Authorization` header. It parses the standard error shape into an `ApiError` object (`status`, `code`, `message`, `details`) defined in `lib/api/errors.js`. On `401` it clears the token and redirects to `/login`.
+- The project is JavaScript. There are no generated types. The shapes of requests and responses are the ones in `openapi.yaml`; the form schemas in `lib/schemas/` (Zod) mirror the validation rules of PRD section 8.2.
+- `lib/api/client.js` is the only file that calls `fetch`; the query hooks in `lib/api/` are the only callers of the client.
 - TanStack Query hooks per resource (`useProducts`, `useReceivingDocument`, `useRecordReceipt`, ...). Mutations invalidate the affected queries: a successful receipt invalidates the document detail, document list, inventory, and transactions.
 - The token is kept in `localStorage` and mirrored in memory by the `AuthProvider`. Trade-off: it is readable by injected scripts (XSS). Mitigations: React escapes output, `dangerouslySetInnerHTML` is forbidden, and tokens expire (Section 4.5). This is recorded as a known limitation.
 - No business rules are computed in the UI. `remaining_quantity` and `all_items_received` come from the API.
@@ -307,6 +323,70 @@ The UI reads `user.role` from `/auth/me`. It hides actions the role cannot perfo
 ### 5.5 UI states
 
 Every page handles loading, empty, and error states. Forms show field-level errors from `details.fields` and a general alert for other error codes. No page may crash on an unexpected error code: unknown codes show the message from the API.
+
+### 5.6 UI design system (shadcn/ui)
+
+**Rule: every UI element is a shadcn/ui component.** Pages and app components are composed only from the components in `src/components/ui/`, plus Tailwind utility classes for layout and spacing.
+
+**Preset (custom configuration chosen for this project)**
+
+| Setting | Value |
+|---|---|
+| Component library | shadcn/ui |
+| Style | **Luma** |
+| Base color | **Mist** |
+| Theme | **Emerald** |
+| Chart color | **Emerald** (a theme variable only; no charts are built, PRD section 4.2) |
+| Heading font | **Outfit** |
+| Font | **Outfit** |
+| Icon library | **Lucide** (`lucide-react`) |
+| Radius | **Default** |
+| Language | JavaScript (`"tsx": false` in `components.json`) |
+| Base primitives | Radix (the `--base` choice; use the same one selected on the Create page) |
+
+**Initialization (task T0).** Build the preset on the shadcn Create page (`https://ui.shadcn.com/create`) with the values above, copy the command it produces, and run it in `frontend/`:
+
+```text
+npx shadcn@latest init --preset b2D2iPGaG --template next
+```
+
+Record the preset code here and in the README: `PRESET_CODE = TODO`. After the command runs, check that `components.json` shows `"tsx": false`, `"iconLibrary": "lucide"`, and the `@/` aliases, that Outfit is loaded through `next/font/google` and applied to both body and headings, and that `src/components/ui/` contains `.jsx` files. If the CLI generated `.tsx` files, stop and report it instead of converting by hand.
+
+**Component mapping.** Use the component on the right for each need. Names follow the shadcn registry; add any that is missing with `npx shadcn@latest add <name>`. If a name does not exist in the installed CLI version, report it and choose the closest shadcn component.
+
+| UI need | shadcn/ui component |
+|---|---|
+| Page layout, navigation | `Sidebar` (or `NavigationMenu`), `Sheet` for mobile navigation, `Breadcrumb`, `Separator` |
+| Buttons and actions | `Button` (variants for primary, destructive, outline) |
+| Text fields, numbers, dates | `Input`, `Textarea`, `Label` (date fields use `Input type="date"`) |
+| Form layout and field errors | `Field` components (or `Form`, whichever the installed CLI provides) with React Hook Form |
+| Choosing from a list (status filter, product picker) | `Select` (or `Combobox` with `Command` and `Popover` for long product lists) |
+| Data tables | `Table` |
+| Status of a document | `Badge` (one variant per status) |
+| Panels and detail sections | `Card` |
+| Messages and error summaries | `Alert`; transient success messages with `Sonner` |
+| Confirm, Complete, Cancel actions | `AlertDialog` for confirmation before the request is sent |
+| Pagination | `Pagination` |
+| Loading and empty states | `Skeleton`, `Spinner`, `Empty` |
+| User menu, row actions | `DropdownMenu` |
+| Hints | `Tooltip` |
+
+**Rules**
+
+1. Do not hand-build a replacement for a component shadcn provides (no custom button, table, modal, badge, or alert markup).
+2. Do not install another UI library (no MUI, Chakra, Ant Design, Bootstrap, Headless UI). Icons come only from `lucide-react`.
+3. Use the theme tokens (`bg-primary`, `text-muted-foreground`, `border`, and so on). Do not hard-code colors, and do not hard-code font families or radius values.
+4. Do not edit files in `components/ui/` except to fix a real defect. Prefer composing them in app components. If a shadcn component is updated with the CLI, re-check local changes.
+5. Every input has a `Label`. Dialogs, tables, and form errors keep the accessibility behavior provided by shadcn.
+6. Irreversible or status-changing actions (Confirm, Complete, Cancel) always go through an `AlertDialog`.
+7. Status badges show the same label and variant everywhere: `DRAFT` neutral, `OPEN` informational, `PARTIALLY_RECEIVED` warning, `COMPLETED` success (Emerald), `CANCELLED` destructive. Build this once in a `StatusBadge` component made from `Badge`.
+
+**Zod and forms**
+
+- One Zod schema per form in `lib/schemas/`: login, product, receiving document (with the items array), and receipt. They mirror PRD section 8.2 (for example SKU pattern and length, quantity integer from 1 to 1,000,000, at most 100 items, no duplicate products).
+- Forms use React Hook Form with `zodResolver`. The receipt schema is built with the item's remaining quantity (`quantity` integer from 1 to `remaining_quantity`) as a hint.
+- After the server answers with `VALIDATION_ERROR`, `details.fields` is copied into the form with `setError`. Zod passing never means the server will accept the request.
+- Zod is also used in `lib/api/client.js` to check the shape of the error body before it is turned into an `ApiError`.
 
 ---
 
@@ -596,8 +676,8 @@ SQL injection is avoided by using Eloquent and the query builder with bindings o
 | Service | Image and build | Port | Notes |
 |---|---|---|---|
 | `db` | `postgres:16-alpine` (pinned tag) | 5432 (internal; optionally published to `127.0.0.1`) | Named volume `pgdata`. Healthcheck: `pg_isready`. |
-| `backend` | Multi-stage `backend/Dockerfile`: Composer install stage, then `php:8.3-apache` runtime with `pdo_pgsql` | 8000 to container 80 | Apache document root `public/`. Runs as `www-data`. Entrypoint described below. |
-| `frontend` | Multi-stage `frontend/Dockerfile`: install, build with `output: 'standalone'`, run `node server.js` | 3000 | `NEXT_PUBLIC_API_URL` is baked in at **build time** (build argument). |
+| `backend` | Multi-stage `backend/Dockerfile`: Composer install stage, then `php:8.5.12-apache` runtime with `pdo_pgsql` | 8000 to container 80 | Apache document root `public/`. Runs as `www-data`. Entrypoint described below. |
+| `frontend` | Multi-stage `frontend/Dockerfile` based on `node:24.22.1-alpine`: install, build with `output: 'standalone'`, run `node server.js` | 3000 | `NEXT_PUBLIC_API_URL` is baked in at **build time** (build argument). |
 
 `docker-compose.yml`: `backend` depends on `db` with `condition: service_healthy`. `frontend` depends on `backend` with `condition: service_healthy`. Each service has a `healthcheck` (backend: `curl -f http://localhost/api/v1/health`).
 
@@ -619,7 +699,7 @@ All configuration comes from the environment. `.env.example` lists every variabl
 |---|---|---|---|
 | `POSTGRES_DB` | db | Database name | `warehouse` |
 | `POSTGRES_USER` | db | Database user | `warehouse` |
-| `POSTGRES_PASSWORD` | db | Database password | `password123` |
+| `POSTGRES_PASSWORD` | db | Database password | `change-me` |
 | `APP_NAME` | backend | Application name | `Warehouse Receiving` |
 | `APP_ENV` | backend | `local` or `production` | `local` |
 | `APP_KEY` | backend | Laravel key (generate; never commit) | empty |
@@ -731,7 +811,7 @@ A shell script (`scripts/concurrency-demo.sh`) sends parallel `curl` requests to
 ### 15.5 Quality gates
 
 - Backend: Laravel Pint (code style) and the full PHPUnit suite pass.
-- Frontend: ESLint, TypeScript `tsc --noEmit`, Vitest pass.
+- Frontend: ESLint and Vitest pass. There is no TypeScript type check because the project is JavaScript.
 - `openapi.yaml` validates with an OpenAPI validator.
 - The Compose stack starts from a clean checkout and the Playwright suite passes against it.
 - Optional: a GitHub Actions workflow running the backend and frontend suites with a `postgres` service.
@@ -744,7 +824,7 @@ Work is done in small tasks, one task per agent session or prompt. Each task has
 
 | Task | Scope | Read first | Done when |
 |---|---|---|---|
-| **T0** Skeleton | Repo layout, Laravel and Next.js projects, Dockerfiles, Compose, `.env.example`, `.gitignore`, health endpoint | This document sections 3, 14; `openapi.yaml` `/health` | `docker compose up --build` starts three healthy services; `/health` returns 200. |
+| **T0** Skeleton | Repo layout, Laravel 13 and Next.js (JavaScript) projects, shadcn/ui preset initialization, Dockerfiles, Compose, `.env.example`, `.gitignore`, health endpoint | This document sections 1.2, 3, 5.6, 14; `openapi.yaml` `/health` | `docker compose up --build` starts three healthy services; `/health` returns 200. |
 | **T1** Database | All migrations in the order of `database-design.md` section 8.2, including constraints, indexes, triggers; models and enums | `database-design.md` sections 4, 8 | `migrate:fresh` succeeds; constraint tests from Section 15.3 "Database protection" pass. |
 | **T2** Auth and errors | Sanctum login, logout, me; `EnsureRole`; `ApiException`; global error handler; `UserSeeder` | Sections 4.4, 4.5, 8.5, 12; PRD US-01 | Auth tests and authorization-matrix skeleton pass; every error uses the standard shape. |
 | **T3** Products | Product service, endpoints, resources, tests | PRD US-02, US-03; `openapi.yaml` products | Product tests pass. |
@@ -752,8 +832,8 @@ Work is done in small tasks, one task per agent session or prompt. Each task has
 | **T5** Lifecycle | State machine, confirm, complete, cancel | Section 11; PRD US-08, US-12, US-13 | Full transition matrix tests pass. |
 | **T6** Receiving | `ReceivingService::recordReceipt`, idempotency, inventory and transaction endpoints | Section 10; `database-design.md` 6.1 to 6.3; PRD US-09 to US-11, US-14, US-15 | Receiving and idempotency tests pass; integrity queries return zero rows. |
 | **T7** Backend hardening | Concurrency tests and demo script, contract checks, Pint, README backend part | Section 15.3.1 | Concurrency scenarios pass repeatedly; evidence captured for `testing.md`. |
-| **T8** Frontend foundation | API client, generated types, `AuthProvider`, layout, login, route guards | Sections 5.1, 5.2 | Login works for both roles; navigation reflects the role. |
-| **T9** Frontend features | Products, documents (list, create, edit, detail), receipt form, lifecycle actions, inventory, transactions | Sections 5.3 to 5.5; PRD FR-UI-* | All pages usable end to end against the API. |
+| **T8** Frontend foundation | API client, Zod schemas, `AuthProvider`, layout built from shadcn components, login, route guards | Sections 5.1, 5.2, 5.6 | Login works for both roles; navigation reflects the role. |
+| **T9** Frontend features | Products, documents (list, create, edit, detail), receipt form, lifecycle actions, inventory, transactions | Sections 5.3 to 5.6; PRD FR-UI-* | All pages usable end to end against the API. |
 | **T10** Quality and delivery | Frontend and E2E tests, full Compose run from a clean clone, README, `testing.md`, `ai-workflow.md`, known limitations | Section 15 | All gates in 15.5 pass; documentation complete. |
 
 Rules for every task:
@@ -790,6 +870,8 @@ Rules for every task:
 
 | Topic | Note |
 |---|---|
+| JavaScript instead of TypeScript | No compile-time checking of request and response shapes. Mitigated by Zod form schemas, ESLint, component tests, and Playwright end-to-end tests. |
+| shadcn/ui preset | The preset and the shadcn CLI change over time. The preset code and CLI behavior are recorded in the README so the setup can be reproduced. |
 | Token in `localStorage` | Convenient but exposed to XSS. A cookie-based session through a Next.js backend-for-frontend would be safer but adds a layer. Accepted for this scope. |
 | Document-level lock | Receipts on one document run one at a time. Safe and simple; throughput is not a concern for a receiving dock. |
 | Idempotency table growth | No cleanup job. After a retention period old keys could be removed (see `database-design.md` section 11). |
