@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 // Keep Vite's configuration loader in native ESM mode.
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -17,5 +17,6 @@ export default defineConfig({
     clearMocks: true,
     fileParallelism: false,
     restoreMocks: true,
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
   },
 });

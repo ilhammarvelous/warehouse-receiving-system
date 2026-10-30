@@ -557,12 +557,12 @@ Do not change application behavior in this task. Report any defect you find inst
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Eight serial Playwright journeys for the T10 scenarios; a separate Compose overlay and ignored environment file for isolated E2E runs; updated README and testing evidence. No application behavior was changed. |
+| Problems found in review | The first over-receipt E2E expectation attempted to observe a server error the client-side Zod limit prevents; the role-switch scenario reused the previous login token; PHPUnit initially encountered rows left by the preceding browser run. Redocly also reported one existing OpenAPI error and three warnings. |
+| Corrections made | The BR-07 scenario now checks the UI validation, sends a direct over-limit API request, and asserts the item and stock remain unchanged. The login helper clears the old token before role changes. Backend tests now start after a fresh migration of the disposable database. Vitest excludes the Playwright test directory. |
+| Verification run | `npm test`: 12 files, 35 tests passed; `npm run lint` and `npm run build` passed; Playwright: all 8 scenarios passed; backend PHPUnit: 93 tests, 1,064 assertions passed; Pint passed for 99 files; concurrency suite: 1 test, 289 assertions passed (four scenarios, three repetitions each); all six integrity queries returned zero rows; the concurrency demo moved stock 0 to 5 with one HTTP 201 and one HTTP 422 `QUANTITY_EXCEEDS_REMAINING`. Redocly lint reported 1 error and 3 warnings. A fresh isolated Compose project was verified; the destructive reset of the existing default project was not run to preserve its active database volume and `.env`. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### R2. Requirement change exercise (practice for the technical review)
 
