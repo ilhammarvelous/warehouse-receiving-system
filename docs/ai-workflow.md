@@ -435,12 +435,12 @@ Report honestly any scenario that is flaky or that you could not reproduce.
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run (include how many repeated runs) | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Added PostgreSQL multiprocess tests for concurrent over-receipt, idempotent replay, receipt-versus-cancel, and parallel receipts sharing a product; each scenario runs three times with six integrity queries after every round. Added a curl demo and backend test instructions. |
+| Problems found in review | The backend container is image-based rather than source-mounted, so `exec` continues using the running container's old image after source edits. Stock also accumulates across repeated scenarios, so assertions must check each operation's delta rather than assume a reset between rounds. |
+| Corrections made | Tests use a temporary, isolated PostgreSQL database, independent PHP workers synchronized at a start barrier, non-transactional fixture writes, truncation cleanup, and database removal. README commands now build the backend image and use one-off containers. |
+| Verification run (include how many repeated runs) | `docker compose run --rm --no-deps --entrypoint php backend artisan test`: 93 passed, 1,065 assertions. The targeted concurrency suite passed, with all four scenarios repeated three times; the six integrity queries returned zero rows after each full round. Pint passed for 99 files. The curl demo ran against a disposable API/database: stock 0 to 5, one HTTP 201 and one HTTP 422 `QUANTITY_EXCEEDS_REMAINING`; the temporary database was removed. Bash syntax, Compose config, `git diff --check`, and the health endpoint passed. No OpenAPI schema validator is installed, so a full YAML-contract validation was not run. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T8. Frontend foundation
 
@@ -675,10 +675,12 @@ Details and outputs are in `docs/testing.md`. Commands used to verify the agent'
 
 | Purpose | Command |
 |---|---|
-| Backend tests | `docker compose exec backend php artisan test` |
-| Code style | `docker compose exec backend ./vendor/bin/pint --test` |
+| Rebuild backend image | `docker compose build backend` |
+| Backend tests | `docker compose run --rm --no-deps --entrypoint php backend artisan test` |
+| Code style | `docker compose run --rm --no-deps --entrypoint ./vendor/bin/pint backend --test` |
 | Frontend checks | `npm run lint`, `npm test` |
 | End to end | `npx playwright test` (stack running) |
+| Concurrency tests | `docker compose run --rm --no-deps --entrypoint php backend artisan test --testsuite=Concurrency` |
 | Concurrency demonstration | `scripts/concurrency-demo.sh` |
 | Integrity queries | SQL from `database-design.md` section 9, expected zero rows |
 | Clean start | `docker compose down -v`, then `docker compose up --build` |

@@ -52,12 +52,34 @@ npm run build
 The automated frontend test script is added with the later frontend testing tasks; it is not
 configured in the T0 skeleton.
 
-Run backend tests and formatting inside the Compose backend container:
+After changing backend source, rebuild its image so test runs use the workspace files. Run backend
+tests and formatting in one-off Compose containers:
 
 ```text
-docker compose exec backend php artisan test
-docker compose exec backend ./vendor/bin/pint --test
+docker compose build backend
+docker compose run --rm --no-deps --entrypoint php backend artisan test
+docker compose run --rm --no-deps --entrypoint ./vendor/bin/pint backend --test
+docker compose run --rm --no-deps --entrypoint php backend artisan test --testsuite=Concurrency
 ```
+
+The concurrency suite creates a uniquely named, isolated PostgreSQL database using the configured
+database role, runs real service calls in separate PHP processes, truncates its fixtures, and drops
+that database. The role must have permission to create databases. It repeats each concurrency
+scenario three times.
+
+To demonstrate two simultaneous receipt requests against the running Compose stack, run the Bash
+script from the repository root in Git Bash on Windows, or another Bash environment with `curl`,
+Node.js, and Docker Compose:
+
+```text
+bash scripts/concurrency-demo.sh
+```
+
+The script uses the local demo credentials by default. Override `SEED_SUPERVISOR_EMAIL`,
+`SEED_SUPERVISOR_PASSWORD`, `SEED_OPERATOR_EMAIL`, and `SEED_OPERATOR_PASSWORD` in the shell if
+they differ from the values configured for the backend. It creates a new product and document for
+each run and leaves them in the database; it reports stock before and after and expects one receipt
+to succeed while the other is rejected.
 
 The shadcn/ui preset code is `b2D2iPGaG` (Luma, Mist, Emerald, Outfit, Lucide, and the project's
 selected Radix primitives). The frontend is JavaScript-only.
