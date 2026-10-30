@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { queryString } from "@/lib/api/query-string";
+import { toast } from "@/components/ui/toast";
 
 export function useProducts(filters = {}) {
   return useQuery({
@@ -21,6 +22,7 @@ export function useCreateProduct() {
         queryClient.invalidateQueries({ queryKey: queryKeys.products }),
         queryClient.invalidateQueries({ queryKey: queryKeys.inventory }),
       ]);
+      toast.success("Product created successfully.");
     },
   });
 }

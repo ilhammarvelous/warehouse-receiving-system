@@ -128,6 +128,7 @@ docker compose @compose run --rm --no-deps --entrypoint php backend artisan test
 | ESLint | Passed. |
 | Next.js production build | Passed; product, receiving-document, inventory, and transaction routes were built. |
 | Playwright | All 8 user journeys passed against the isolated Compose stack. |
+| Sonner notifications | Playwright verified visible success notifications after login, product/document creation, receipt, confirmation, and completion; invalid receipt input showed validation feedback rather than a success toast. |
 | Backend PHPUnit | 93 tests passed, 1,064 assertions, after resetting the disposable database. |
 | Laravel Pint | Passed for 99 files. |
 | Concurrency suite | 1 test passed, 289 assertions; all four concurrency scenarios ran three times. |

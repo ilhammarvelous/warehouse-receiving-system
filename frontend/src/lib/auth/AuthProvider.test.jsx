@@ -3,7 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/auth/events";
 import { getAccessToken } from "@/lib/auth/token-storage";
+import { toast } from "@/components/ui/toast";
 
+vi.mock("@/components/ui/toast", () => ({
+  toast: {
+    success: vi.fn(),
+  },
+}));
 describe("AuthProvider", () => {
   const fetchMock = vi.fn();
 
@@ -46,7 +52,7 @@ describe("AuthProvider", () => {
     );
   });
 
-  it("stores the token and user after a successful login", async () => {
+  it("test_us_01_stores_token_user_and_notifies_after_successful_login", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
@@ -82,13 +88,14 @@ describe("AuthProvider", () => {
     expect(result.current.status).toBe("authenticated");
     expect(result.current.user.role).toBe("OPERATOR");
     expect(getAccessToken()).toBe("new-token");
+    expect(toast.success).toHaveBeenCalledWith("Signed in successfully.");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8000/api/v1/auth/login",
       expect.objectContaining({ method: "POST" })
     );
   });
 
-  it("revokes the server session and clears the local token on logout", async () => {
+  it("test_us_01_revokes_session_and_notifies_after_logout", async () => {
     localStorage.setItem("warehouse-receiving.access-token", "stored-token");
     fetchMock
       .mockResolvedValueOnce({
@@ -119,6 +126,7 @@ describe("AuthProvider", () => {
 
     expect(result.current.status).toBe("unauthenticated");
     expect(getAccessToken()).toBeNull();
+    expect(toast.success).toHaveBeenCalledWith("Signed out successfully.");
     expect(fetchMock.mock.calls[1][1].method).toBe("POST");
   });
 

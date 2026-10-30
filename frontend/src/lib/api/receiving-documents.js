@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { queryString } from "@/lib/api/query-string";
+import { toast } from "@/components/ui/toast";
 
 export function useReceivingDocuments(filters = {}) {
   return useQuery({
@@ -28,14 +29,15 @@ export function useCreateReceivingDocument() {
         method: "POST",
         body: document,
       }),
-    onSuccess: async (response) => {
-      queryClient.setQueryData(
-        queryKeys.document(response.data.id),
-        response
+      onSuccess: async (response) => {
+        queryClient.setQueryData(
+          queryKeys.document(response.data.id),
+          response
       );
       await queryClient.invalidateQueries({
         queryKey: queryKeys.documents,
       });
+      toast.success("Receiving document created successfully.");
     },
   });
 }
@@ -49,10 +51,10 @@ export function useUpdateReceivingDocument() {
         method: "PUT",
         body: document,
       }),
-    onSuccess: async (response, variables) => {
-      queryClient.setQueryData(
-        queryKeys.document(variables.id),
-        response
+      onSuccess: async (response, variables) => {
+        queryClient.setQueryData(
+          queryKeys.document(variables.id),
+          response
       );
       await queryClient.invalidateQueries({
         queryKey: queryKeys.documents,
@@ -60,6 +62,7 @@ export function useUpdateReceivingDocument() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.document(variables.id),
       });
+      toast.success("Draft receiving document updated successfully.");
     },
   });
 }
@@ -72,15 +75,21 @@ export function useTransitionReceivingDocument() {
       apiRequest(`/receiving-documents/${id}/${action}`, {
         method: "POST",
       }),
-    onSuccess: async (_response, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.documents,
+      onSuccess: async (_response, variables) => {
+        const successMessages = {
+          confirm: "Receiving document confirmed.",
+          complete: "Receiving document completed.",
+          cancel: "Receiving document cancelled.",
+        };
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.documents,
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.document(variables.id),
         }),
       ]);
+      toast.success(successMessages[variables.action]);
     },
   });
 }
@@ -98,10 +107,10 @@ export function useRecordReceipt() {
           headers: { "Idempotency-Key": idempotencyKey },
         }
       ),
-    onSuccess: async (_response, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.document(variables.documentId),
+      onSuccess: async (_response, variables) => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.document(variables.documentId),
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.documents,
@@ -113,6 +122,7 @@ export function useRecordReceipt() {
           queryKey: queryKeys.transactions,
         }),
       ]);
+      toast.success("Receipt recorded successfully.");
     },
   });
 }

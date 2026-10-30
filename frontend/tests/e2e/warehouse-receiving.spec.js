@@ -58,6 +58,7 @@ async function loginAs(page, user) {
   await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/receiving-documents$/);
+  await expect(page.getByText("Signed in successfully.")).toBeVisible();
 }
 
 async function createProduct(page, product) {
@@ -66,6 +67,7 @@ async function createProduct(page, product) {
   await page.getByLabel("Product name").fill(product.name);
   await page.getByRole("button", { name: "Create product" }).click();
   await expect(page.getByLabel("SKU")).toHaveValue("");
+  await expect(page.getByText("Product created successfully.")).toBeVisible();
   await page.getByLabel("Search products").fill(product.sku);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(
@@ -110,6 +112,9 @@ async function createReceivingDocument(page, supplier, documentItems) {
   await page.getByRole("button", { name: "Save draft" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
+  await expect(
+    page.getByText("Receiving document created successfully.")
+  ).toBeVisible();
   const createdDocument = (await response.json()).data;
   await expect(page).toHaveURL(
     new RegExp(`/receiving-documents/${createdDocument.id}$`)
@@ -122,9 +127,15 @@ async function confirmDocument(page) {
   const dialog = page.getByRole("alertdialog");
   await dialog.getByRole("button", { name: "Confirm document" }).click();
   await expect(page.getByText("OPEN", { exact: true })).toBeVisible();
+  await expect(page.getByText("Receiving document confirmed.")).toBeVisible();
 }
 
-async function recordReceipt(page, sku, quantity, { doubleClick = false } = {}) {
+async function recordReceipt(
+  page,
+  sku,
+  quantity,
+  { doubleClick = false, expectSuccess = true } = {}
+) {
   const row = page.getByRole("row").filter({ hasText: sku });
   await row.getByLabel("Quantity to receive").fill(String(quantity));
   const button = row.getByRole("button", { name: "Record receipt" });
@@ -133,6 +144,12 @@ async function recordReceipt(page, sku, quantity, { doubleClick = false } = {}) 
     await button.dblclick();
   } else {
     await button.click();
+  }
+
+  if (expectSuccess) {
+    await expect(page.getByText("Receipt recorded successfully.")).toBeVisible();
+  } else {
+    await expect(row.getByRole("alert")).toBeVisible();
   }
 }
 
@@ -186,7 +203,9 @@ test.describe.serial("Warehouse receiving end-to-end (US-02 to US-15)", () => {
     await loginAs(page, operator);
     await page.goto(`/receiving-documents/${documentId}`);
     const row = page.getByRole("row").filter({ hasText: products.first.sku });
-    await recordReceipt(page, products.first.sku, 4);
+    await recordReceipt(page, products.first.sku, 4, {
+      expectSuccess: false,
+    });
     await expect(row.getByRole("alert")).toContainText("3");
 
     const response = await page.request.post(
@@ -255,6 +274,7 @@ test.describe.serial("Warehouse receiving end-to-end (US-02 to US-15)", () => {
     const dialog = page.getByRole("alertdialog");
     await dialog.getByRole("button", { name: "Complete document" }).click();
     await expect(page.getByText("COMPLETED", { exact: true })).toBeVisible();
+    await expect(page.getByText("Receiving document completed.")).toBeVisible();
   });
 
   test("test_us_14_us_15_inventory_and_transactions_match_successful_receipts", async ({

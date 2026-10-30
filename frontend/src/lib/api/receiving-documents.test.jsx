@@ -3,10 +3,22 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useRecordReceipt } from "@/lib/api/receiving-documents";
+import { toast } from "@/components/ui/toast";
+import {
+  useCreateReceivingDocument,
+  useRecordReceipt,
+  useTransitionReceivingDocument,
+  useUpdateReceivingDocument,
+} from "@/lib/api/receiving-documents";
 
 vi.mock("@/lib/api/client", () => ({
   apiRequest: vi.fn(),
+}));
+
+vi.mock("@/components/ui/toast", () => ({
+  toast: {
+    success: vi.fn(),
+  },
 }));
 
 describe("useRecordReceipt", () => {
@@ -71,5 +83,86 @@ describe("useRecordReceipt", () => {
       queryClient.getQueryState(queryKeys.transactionList({ page: 1 }))
         .isInvalidated
     ).toBe(true);
+    expect(toast.success).toHaveBeenCalledWith(
+      "Receipt recorded successfully."
+    );
   });
+});
+
+describe("receiving document success notifications", () => {
+  let queryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    apiRequest.mockResolvedValue({ data: { id: 7 } });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+    vi.clearAllMocks();
+  });
+
+  function createWrapper() {
+    function QueryClientTestWrapper({ children }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    return QueryClientTestWrapper;
+  }
+
+  it("test_us_04_us_07_notifies_after_creating_and_updating_a_document", async () => {
+    const { result: createResult } = renderHook(
+      () => useCreateReceivingDocument(),
+      { wrapper: createWrapper() }
+    );
+
+    await act(async () => {
+      await createResult.current.mutateAsync({ supplier_name: "Supplier" });
+    });
+
+    expect(toast.success).toHaveBeenLastCalledWith(
+      "Receiving document created successfully."
+    );
+
+    const { result: updateResult } = renderHook(
+      () => useUpdateReceivingDocument(),
+      { wrapper: createWrapper() }
+    );
+
+    await act(async () => {
+      await updateResult.current.mutateAsync({
+        id: 7,
+        document: { supplier_name: "Updated supplier" },
+      });
+    });
+
+    expect(toast.success).toHaveBeenLastCalledWith(
+      "Draft receiving document updated successfully."
+    );
+  });
+
+  it.each([
+    ["confirm", "Receiving document confirmed."],
+    ["complete", "Receiving document completed."],
+    ["cancel", "Receiving document cancelled."],
+  ])(
+    "test_us_08_us_12_us_13_notifies_after_%s_succeeds",
+    async (action, message) => {
+      const { result } = renderHook(() => useTransitionReceivingDocument(), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync({ id: 7, action });
+      });
+
+      expect(toast.success).toHaveBeenCalledWith(message);
+    }
+  );
 });

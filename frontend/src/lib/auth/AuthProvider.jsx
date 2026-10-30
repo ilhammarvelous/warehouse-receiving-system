@@ -16,6 +16,7 @@ import {
   getAccessToken,
   storeAccessToken,
 } from "@/lib/auth/token-storage";
+import { toast } from "@/components/ui/toast";
 
 const AuthContext = createContext(null);
 
@@ -90,6 +91,7 @@ export function AuthProvider({ children }) {
       user: response.data.user,
       error: null,
     });
+    toast.success("Signed in successfully.");
 
     return response.data.user;
   }, []);
@@ -98,6 +100,7 @@ export function AuthProvider({ children }) {
     await apiRequest("/auth/logout", { method: "POST" });
     clearAccessToken();
     setAuthState({ status: "unauthenticated", user: null, error: null });
+    toast.success("Signed out successfully.");
   }, []);
 
   const value = useMemo(
