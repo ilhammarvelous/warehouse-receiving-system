@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ReceivingDocumentService;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ReceivingDocumentController extends Controller
 {
@@ -59,5 +60,46 @@ class ReceivingDocumentController extends Controller
         return ReceivingDocumentDetailResource::make(
             $documentService->update($documentId, $request->validated()),
         );
+    }
+
+    public function confirm(
+        int $documentId,
+        Request $request,
+        ReceivingDocumentService $documentService,
+    ): ReceivingDocumentDetailResource {
+        return ReceivingDocumentDetailResource::make(
+            $documentService->confirm($documentId, $this->authenticatedUser($request)),
+        );
+    }
+
+    public function complete(
+        int $documentId,
+        Request $request,
+        ReceivingDocumentService $documentService,
+    ): ReceivingDocumentDetailResource {
+        return ReceivingDocumentDetailResource::make(
+            $documentService->complete($documentId, $this->authenticatedUser($request)),
+        );
+    }
+
+    public function cancel(
+        int $documentId,
+        Request $request,
+        ReceivingDocumentService $documentService,
+    ): ReceivingDocumentDetailResource {
+        return ReceivingDocumentDetailResource::make(
+            $documentService->cancel($documentId, $this->authenticatedUser($request)),
+        );
+    }
+
+    private function authenticatedUser(Request $request): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
+        return $user;
     }
 }

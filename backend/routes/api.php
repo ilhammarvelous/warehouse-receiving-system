@@ -25,6 +25,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/receiving-documents/{documentId}', [ReceivingDocumentController::class, 'update'])
         ->whereNumber('documentId')
         ->middleware('role:SUPERVISOR');
+    Route::post('/receiving-documents/{documentId}/confirm', [ReceivingDocumentController::class, 'confirm'])
+        ->whereNumber('documentId')
+        ->middleware('role:SUPERVISOR');
+    Route::post('/receiving-documents/{documentId}/complete', [ReceivingDocumentController::class, 'complete'])
+        ->whereNumber('documentId')
+        ->middleware('role:SUPERVISOR');
+    Route::post('/receiving-documents/{documentId}/cancel', [ReceivingDocumentController::class, 'cancel'])
+        ->whereNumber('documentId')
+        ->middleware('role:SUPERVISOR');
 });
 
 Route::get('/health', function () {

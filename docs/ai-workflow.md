@@ -85,8 +85,8 @@ Tasks are defined in `technical-spec.md` section 16.
 | T1 | Database migrations, models, enums | `done` | `4b1f12b` |
 | T2 | Auth, role middleware, error handling | `done` | `5ccb6e8` |
 | T3 | Products | `done` | `1095909` |
-| T4 | Receiving documents (create, list, detail, edit) | `done` | |
-| T5 | Document lifecycle (confirm, complete, cancel) | `TODO` | |
+| T4 | Receiving documents (create, list, detail, edit) | `done` | `7f68654` |
+| T5 | Document lifecycle (confirm, complete, cancel) | `done` | |
 | T6 | Receiving, idempotency, inventory endpoints | `TODO` | |
 | T7 | Backend hardening: concurrency tests, demo script | `TODO` | |
 | T8 | Frontend foundation | `TODO` | |
@@ -287,7 +287,7 @@ Do not implement confirm, complete, cancel, or receipts.
 | Problems found in review | Initial document requests returned 500 because `ReceivingDocument::receipts()` declared `HasMany` while returning `HasManyThrough`; the original test coverage also did not exercise parallel numbering. |
 | Corrections made | Corrected the relationship return type and added a barrier-synchronized multiprocess test for unique numbers under concurrent generation, with isolated sequence cleanup. |
 | Verification run | After rebuilding the backend: `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 52 tests passed, 383 assertions; Pint: 82 files passed; document routes: 4 verified; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; db, backend, and frontend healthy; `git diff --check` clean. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `7f68654` (committed by the developer). |
 
 ### T5. Document lifecycle (featured prompt)
 
@@ -320,12 +320,12 @@ Before coding: plan, assumptions, and open questions. Do not implement receipts.
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Centralized document lifecycle transitions in `DocumentStatus`; Supervisor-only confirm, complete, and cancel endpoints; transactional state changes with document-first row locking, audit fields, and completion/cancellation guards; PostgreSQL tests for every status/action pair. |
+| Problems found in review | The current task has no receipt-creation flow, so lifecycle tests cannot create real receipts to establish `PARTIALLY_RECEIVED` state. |
+| Corrections made | Added a factory-backed partial-document fixture that sets received quantities without receipt rows, explicitly documented as temporary test setup until T6 implements receipts. |
+| Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 70 tests passed, 515 assertions; Pint: 85 files passed; 7 receiving-document routes verified; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; db, backend, and frontend healthy. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T6. Receiving, idempotency, inventory (featured prompt)
 

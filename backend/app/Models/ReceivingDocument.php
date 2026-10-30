@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\DocumentStatus;
+use Database\Factories\ReceivingDocumentFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class ReceivingDocument extends Model
 {
+    /** @use HasFactory<ReceivingDocumentFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'document_number',
         'supplier_name',

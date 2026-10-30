@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\DocumentAction;
 use App\Enums\DocumentStatus;
 use App\Enums\ErrorCode;
 use App\Exceptions\ApiException;
 use App\Models\ReceivingDocument;
+use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -90,6 +92,21 @@ class ReceivingDocumentService
         return $this->find($documentId);
     }
 
+    public function confirm(int $id, User $user): ReceivingDocument
+    {
+        return $this->transition($id, DocumentAction::Confirm, $user);
+    }
+
+    public function complete(int $id, User $user): ReceivingDocument
+    {
+        return $this->transition($id, DocumentAction::Complete, $user);
+    }
+
+    public function cancel(int $id, User $user): ReceivingDocument
+    {
+        return $this->transition($id, DocumentAction::Cancel, $user);
+    }
+
     /**
      * @param  array{page?: int|string, per_page?: int|string, search?: ?string, status?: string}  $filters
      * @return LengthAwarePaginator<ReceivingDocument>
@@ -132,6 +149,70 @@ class ReceivingDocumentService
             ->withSum('items as total_expected_quantity', 'expected_quantity')
             ->withSum('items as total_received_quantity', 'received_quantity')
             ->findOrFail($id);
+    }
+
+    private function transition(int $id, DocumentAction $action, User $user): ReceivingDocument
+    {
+        $documentId = DB::transaction(function () use ($id, $action, $user): int {
+            $document = ReceivingDocument::query()
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($action === DocumentAction::Cancel && $document->status === DocumentStatus::PartiallyReceived) {
+                throw new ApiException(
+                    ErrorCode::DocumentHasReceipts,
+                    409,
+                    'A document that already has receipts cannot be cancelled.',
+                    ['status' => $document->status->value],
+                );
+            }
+
+            $nextStatus = $document->status->transitionTo($action);
+
+            if ($nextStatus === null) {
+                throw new ApiException(
+                    ErrorCode::InvalidStatusTransition,
+                    409,
+                    "A document in status {$document->status->value} cannot be {$action->pastParticiple()}.",
+                    [
+                        'from' => $document->status->value,
+                        'action' => $action->value,
+                    ],
+                );
+            }
+
+            if ($action === DocumentAction::Complete) {
+                $incompleteItems = $document->items()
+                    ->whereColumn('received_quantity', '<', 'expected_quantity')
+                    ->orderBy('id')
+                    ->get(['id', 'expected_quantity', 'received_quantity'])
+                    ->map(fn (ReceivingItem $item): array => [
+                        'item_id' => $item->id,
+                        'remaining_quantity' => $item->expected_quantity - $item->received_quantity,
+                    ])
+                    ->all();
+
+                if ($incompleteItems !== []) {
+                    throw new ApiException(
+                        ErrorCode::DocumentNotFullyReceived,
+                        409,
+                        'All items must be fully received before the document can be completed.',
+                        ['incomplete_items' => $incompleteItems],
+                    );
+                }
+            }
+
+            $document->fill([
+                'status' => $nextStatus,
+                'status_changed_by' => $user->id,
+                'status_changed_at' => now('UTC'),
+            ])->save();
+
+            return $document->id;
+        }, attempts: 3);
+
+        return $this->find($documentId);
     }
 
     /**
