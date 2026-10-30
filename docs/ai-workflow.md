@@ -86,8 +86,8 @@ Tasks are defined in `technical-spec.md` section 16.
 | T2 | Auth, role middleware, error handling | `done` | `5ccb6e8` |
 | T3 | Products | `done` | `1095909` |
 | T4 | Receiving documents (create, list, detail, edit) | `done` | `7f68654` |
-| T5 | Document lifecycle (confirm, complete, cancel) | `done` | |
-| T6 | Receiving, idempotency, inventory endpoints | `TODO` | |
+| T5 | Document lifecycle (confirm, complete, cancel) | `done` | `a78bf36` |
+| T6 | Receiving, idempotency, inventory endpoints | `done` | |
 | T7 | Backend hardening: concurrency tests, demo script | `TODO` | |
 | T8 | Frontend foundation | `TODO` | |
 | T9 | Frontend features | `TODO` | |
@@ -325,7 +325,7 @@ Before coding: plan, assumptions, and open questions. Do not implement receipts.
 | Problems found in review | The current task has no receipt-creation flow, so lifecycle tests cannot create real receipts to establish `PARTIALLY_RECEIVED` state. |
 | Corrections made | Added a factory-backed partial-document fixture that sets received quantities without receipt rows, explicitly documented as temporary test setup until T6 implements receipts. |
 | Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 70 tests passed, 515 assertions; Pint: 85 files passed; 7 receiving-document routes verified; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; db, backend, and frontend healthy. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `a78bf36` (committed by the developer). |
 
 ### T6. Receiving, idempotency, inventory (featured prompt)
 
@@ -365,12 +365,12 @@ Before coding: plan, assumptions, open questions. Do not implement the frontend.
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Transactional receipt recording in the specified lock and validation order; scoped idempotency with persisted SHA-256 request hash and replay response; receipt result resource; searchable, paginated inventory and filtered newest-first transaction history endpoints. |
+| Problems found in review | PostgreSQL JSONB does not preserve JSON object key order, so replayed payload objects can have a different serialization order despite identical content. |
+| Corrections made | Tests compare replay bodies as JSON objects with recursively canonicalized object keys, while preserving array order; verified that replay returns the stored body and does not apply the receipt again. |
+| Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 92 tests passed, 775 assertions; Pint: 97 files passed; 17 API routes verified; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; db, backend, and frontend healthy; `git diff --check` clean. The six integrity queries in `database-design.md` returned zero rows after the mixed receipt/rejection/replay scenario. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### R1. Adversarial review of the receiving operation (featured prompt)
 

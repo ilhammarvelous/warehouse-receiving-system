@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\InventoryController;
+use App\Http\Controllers\Api\V1\InventoryTransactionController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\ReceivingDocumentController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +37,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/receiving-documents/{documentId}/cancel', [ReceivingDocumentController::class, 'cancel'])
         ->whereNumber('documentId')
         ->middleware('role:SUPERVISOR');
+    Route::post(
+        '/receiving-documents/{documentId}/items/{itemId}/receipts',
+        [ReceiptController::class, 'store'],
+    )
+        ->whereNumber('documentId')
+        ->whereNumber('itemId')
+        ->middleware('role:OPERATOR,SUPERVISOR');
+
+    Route::get('/inventory', [InventoryController::class, 'index']);
+    Route::get('/inventory-transactions', [InventoryTransactionController::class, 'index']);
 });
 
 Route::get('/health', function () {
