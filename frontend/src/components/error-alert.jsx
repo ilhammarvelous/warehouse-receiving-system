@@ -22,8 +22,13 @@ function fieldErrors(error) {
   });
 }
 
-export function ErrorAlert({ error, message, title = "Something went wrong" }) {
-  const errors = fieldErrors(error);
+export function ErrorAlert({
+  error,
+  message,
+  title = "Something went wrong",
+  includeFieldErrors = true,
+}) {
+  const errors = includeFieldErrors ? fieldErrors(error) : [];
   const description =
     message ??
     (error instanceof Error

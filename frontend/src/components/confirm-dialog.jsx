@@ -17,6 +17,7 @@ export function ConfirmDialog({
   confirmLabel = "Continue",
   cancelLabel = "Cancel",
   destructive = false,
+  confirmDisabled = false,
   onConfirm,
 }) {
   return (
@@ -31,6 +32,7 @@ export function ConfirmDialog({
           <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             variant={destructive ? "destructive" : "default"}
+            disabled={confirmDisabled}
             onClick={onConfirm}
           >
             {confirmLabel}

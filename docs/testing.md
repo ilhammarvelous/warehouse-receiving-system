@@ -59,3 +59,26 @@ npm run build
 
 The browser check covered rendering only; authenticated login against the running Compose API was
 not run as part of T8.
+
+## T9: Frontend features
+
+Environment: Node.js 24.22.1, Next.js 16.4.3.
+
+Commands, run from `frontend/`:
+
+```text
+npm test
+npm run lint
+npm run build
+```
+
+| Check | Result |
+|---|---|
+| Vitest and Testing Library | 12 test files and 35 tests passed |
+| ESLint | Passed |
+| Next.js production build | Passed; products, receiving documents, inventory, and transaction routes were built |
+| Receipt behavior | Tests cover double-click suppression, key reuse after network/5xx failures, new key after 422, remaining-quantity error display/refetch, and invalidation of document/list/inventory/transaction queries |
+| Role and status actions | Tests cover Supervisor-only actions, cancel availability, and completion readiness from the API flag |
+
+T9 component and hook tests use mocked API responses. A live login and browser end-to-end run
+against the Docker Compose API were not performed; the E2E scenarios are part of T10.

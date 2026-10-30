@@ -525,12 +525,12 @@ buttons per role and status; over-receive error display.
 
 | Field | T9a | T9b |
 |---|---|---|
-| Date / model | `TODO` | `TODO` |
-| What the agent produced | `TODO` | `TODO` |
-| Problems found in review | `TODO` | `TODO` |
-| Corrections made | `TODO` | `TODO` |
-| Verification run | `TODO` | `TODO` |
-| Commit(s) | `TODO` | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Product list/search and Supervisor-only product creation; searchable, paginated receiving-document list; shared create/edit form with product search, item editor, duplicate detection, and server field errors; read-only document detail with item quantities and receipt history; TanStack Query hooks for products and documents. | Receipt form with idempotency-key lifecycle and API-provided remaining-quantity handling; lifecycle actions gated by role/status and confirmed through AlertDialog; inventory list/search and transaction history filters; query invalidation for receipt effects. |
+| Problems found in review | React lint detected a hook used inside the dynamic item-row renderer; form validation tests also exposed duplicate display of server field errors. | React lint rejected reading an in-flight ref from a render callback. Initial test code containing JSX needed a `.jsx` extension. |
+| Corrections made | Moved `useWatch` to the component's top level and kept field errors inline while preserving the general API alert. | Used state for the receipt attempt and in-flight guard, retained keys for network/5xx retries, and discarded them on 2xx/4xx responses. |
+| Verification run | Frontend test suite passed: 12 files, 35 tests. `npm run lint` and `npm run build` passed; every T9 route appears in the production route manifest. | Covered one-request double-click behavior, key reuse after network and 5xx failures, replacement after 422, over-receipt refresh/message, role/status actions, confirmation dialog behavior, required header, and affected-query invalidation. Live Compose login and browser E2E were not run; they remain for T10. |
+| Commit(s) | None; left uncommitted for developer review. | None; left uncommitted for developer review. |
 
 ### T10. Quality and delivery
 
