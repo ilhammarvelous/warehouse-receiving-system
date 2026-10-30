@@ -121,7 +121,7 @@ Goal: create the empty but runnable skeleton of the system.
   (SELECT 1; 200 {"status":"ok","database":"ok"} or 503 {"status":"error","database":"unreachable"}).
 - frontend/: new Next.js project (latest stable, App Router, JAVASCRIPT only, Tailwind, ESLint, src dir,
   alias @/*) running on Node.js 24.22.1 (.nvmrc). Initialize shadcn/ui with the preset I give you
-  (Luma, Mist, Emerald, Outfit, Lucide, default radius): run `npx shadcn@latest init --preset <PRESET_CODE> --base radix`
+  (Luma, Mist, Emerald, Outfit, Lucide, default radius): run `npx shadcn@latest init --preset b2D2iPGaG --template next`
   with PRESET_CODE = <paste the code from ui.shadcn.com/create>. Confirm components.json has "tsx": false and
   "iconLibrary": "lucide", Outfit is applied to body and headings, and components/ui contains .jsx files.
   Add the Button component as a smoke test. Install zod, react-hook-form, @hookform/resolvers, @tanstack/react-query.
