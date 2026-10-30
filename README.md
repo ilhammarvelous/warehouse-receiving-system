@@ -45,12 +45,12 @@ The `db` service is private to the Compose network. Its data is stored in the `p
 Run frontend checks from `frontend/`:
 
 ```text
+npm test
 npm run lint
 npm run build
 ```
 
-The automated frontend test script is added with the later frontend testing tasks; it is not
-configured in the T0 skeleton.
+`npm test` runs the Vitest and Testing Library suite.
 
 After changing backend source, rebuild its image so test runs use the workspace files. Run backend
 tests and formatting in one-off Compose containers:

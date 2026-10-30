@@ -37,3 +37,25 @@ can vary by run; no unexpected deadlock or inconsistent outcome was observed.
 No lightweight OpenAPI response-schema validator is installed in the project dependencies. The
 existing feature tests check selected API response structures, but full response validation against
 `docs/openapi.yaml` was not run.
+
+## T8: Frontend foundation
+
+Environment: Node.js 24.22.1, Next.js 16.4.3.
+
+Commands, run from `frontend/`:
+
+```text
+npm test
+npm run lint
+npm run build
+```
+
+| Check | Result |
+|---|---|
+| Vitest and Testing Library | 8 test files and 21 tests passed |
+| ESLint | Passed |
+| Next.js production build | Passed |
+| Browser smoke check | `/login` returned HTTP 200 and rendered the sign-in form |
+
+The browser check covered rendering only; authenticated login against the running Compose API was
+not run as part of T8.

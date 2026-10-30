@@ -473,12 +473,12 @@ Do not build the feature pages yet.
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | Not recorded. |
+| What the agent produced | Added the API client and error handling, Zod schemas, token storage and `AuthProvider`, login and protected layouts, role-aware navigation and guards, shared feedback/status/dialog/pagination components, placeholder routes, shadcn components required by section 5.6, and Vitest/Testing Library coverage. |
+| Problems found in review | Lint rejected the generated mobile hook's effect state update; Vitest initially did not transform JSX in `.js` files and retained rendered DOM between tests; the initial SKU regex was stricter than the documented rule. |
+| Corrections made | Reworked the mobile hook to use `useSyncExternalStore`, used `.jsx` for the tested JSX routes, added per-test DOM cleanup, and aligned the SKU regex with the PRD. |
+| Verification run | `npm test`: 8 test files and 21 tests passed. `npm run lint` and `npm run build` passed. The login route returned HTTP 200 and the rendered login screen was checked in a browser. Authenticated end-to-end login against the Compose backend was not run. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T9. Frontend features
 
