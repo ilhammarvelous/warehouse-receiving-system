@@ -81,9 +81,9 @@ Tasks are defined in `technical-spec.md` section 16.
 
 | Task | Scope | Status | Commit(s) |
 |---|---|---|---|
-| T0 | Skeleton, Docker, health endpoint | `TODO` | |
-| T1 | Database migrations, models, enums | `TODO` | |
-| T2 | Auth, role middleware, error handling | `TODO` | |
+| T0 | Skeleton, Docker, health endpoint | `done` | `287774d` |
+| T1 | Database migrations, models, enums | `done` | `4b1f12b` |
+| T2 | Auth, role middleware, error handling | `done` | |
 | T3 | Products | `TODO` | |
 | T4 | Receiving documents (create, list, detail, edit) | `TODO` | |
 | T5 | Document lifecycle (confirm, complete, cancel) | `TODO` | |
@@ -150,7 +150,7 @@ Verify: docker compose up --build gives three healthy services and /api/v1/healt
 | Problems found in review | Host PHP lacked extensions needed by Composer/PHPUnit; the initial frontend package install ran at the repository root; Laravel defaults added web/Vite scaffolding, sample migrations/seeding, and SQLite setup outside the API-only T0 scope; container checks exposed shell line-ending, frontend bind-address, and dotenv warnings. |
 | Corrections made | Removed the accidental root npm artifacts and installed the specified packages in `frontend/`; installed Sanctum with the available PHP extensions; removed generated web/Vite/sample database setup; corrected container scripts, healthchecks, and test environment; pinned Composer. |
 | Verification run | `docker compose up --build -d`: all three services healthy; API health returned `200 {"status":"ok","database":"ok"}` and frontend returned 200; only `migrations` and Sanctum's `personal_access_tokens` tables were created; `docker compose exec backend php artisan test`: 4 passed, 9 assertions; Pint: 27 files passed; frontend `npm run lint` and `npm run build` passed; production `npm audit --omit=dev`: 0 advisories. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `287774d` (committed by the developer). |
 
 ### T1. Database migrations, models, enums
 
@@ -188,7 +188,7 @@ anything in the document you found ambiguous. Do not change docs/.
 | Problems found in review | Eloquent inferred `inventories` instead of the specified `inventory` table. PostgreSQL functions survive Laravel `migrate:fresh`, so a plain `CREATE FUNCTION` prevented a repeat clean migration. |
 | Corrections made | Set the explicit `inventory` model table name; made the append-only trigger function creation replace-safe; corrected the user factory for the specified `users` columns. |
 | Verification run | PostgreSQL `migrate:fresh --force` passed; `migrate:rollback --step=11` and `migrate --force` both passed; backend suite: 18 tests, 102 assertions; Pint: 49 files passed. Database tests cover all defined check, unique, and foreign-key constraints, append-only updates/deletes, and restricted product deletion. Compose services remained healthy. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `4b1f12b` (committed by the developer). |
 
 ### T2. Authentication, authorization, and error handling
 
@@ -218,12 +218,12 @@ Before coding: plan and assumptions. After: summary with requirement IDs covered
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Sanctum login, logout, and current-user endpoints; case-insensitive login; role middleware; API error rendering and database constraint mapping; environment-configured, idempotent user seeder; PostgreSQL feature tests. |
+| Problems found in review | The first test run used the pre-T2 container image. After rebuilding, seeded demo users also conflicted with fixed emails in test fixtures; the database-exception test used the wrong constructor signature, and the logout test needed to clear Laravel's cached test guard before checking the revoked token. |
+| Corrections made | Rebuilt the backend from the workspace; changed test fixtures to isolated email addresses, corrected the test exception construction, reset guards between logout requests, and formatted the PHP files with Pint. |
+| Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 32 tests passed, 163 assertions; Pint: 61 files passed; `docker compose ps`: db, backend, and frontend healthy; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; auth routes verified with `route:list`. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T3. Products
 

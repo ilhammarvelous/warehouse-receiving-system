@@ -84,6 +84,17 @@ return [
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
+    'seed_users' => [
+        'supervisor' => [
+            'email' => env('SEED_SUPERVISOR_EMAIL'),
+            'password' => env('SEED_SUPERVISOR_PASSWORD'),
+        ],
+        'operator' => [
+            'email' => env('SEED_OPERATOR_EMAIL'),
+            'password' => env('SEED_OPERATOR_PASSWORD'),
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Encryption Key
