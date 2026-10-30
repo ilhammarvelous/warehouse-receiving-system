@@ -145,12 +145,12 @@ Verify: docker compose up --build gives three healthy services and /api/v1/healt
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Laravel 13 API-only foundation with Sanctum, PostgreSQL health route and PHPUnit tests; Next.js JavaScript/shadcn Radix foundation; Dockerfiles, Compose, environment template, README, and runtime configuration. |
+| Problems found in review | Host PHP lacked extensions needed by Composer/PHPUnit; the initial frontend package install ran at the repository root; Laravel defaults added web/Vite scaffolding, sample migrations/seeding, and SQLite setup outside the API-only T0 scope; container checks exposed shell line-ending, frontend bind-address, and dotenv warnings. |
+| Corrections made | Removed the accidental root npm artifacts and installed the specified packages in `frontend/`; installed Sanctum with the available PHP extensions; removed generated web/Vite/sample database setup; corrected container scripts, healthchecks, and test environment; pinned Composer. |
+| Verification run | `docker compose up --build -d`: all three services healthy; API health returned `200 {"status":"ok","database":"ok"}` and frontend returned 200; only `migrations` and Sanctum's `personal_access_tokens` tables were created; `docker compose exec backend php artisan test`: 4 passed, 9 assertions; Pint: 27 files passed; frontend `npm run lint` and `npm run build` passed; production `npm audit --omit=dev`: 0 advisories. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T1. Database migrations, models, enums
 
@@ -665,7 +665,7 @@ Fill in as they happen. These are the most useful evidence of review.
 
 | # | Task | What the agent got wrong | How I noticed | How it was fixed |
 |---|---|---|---|---|
-| 1 | `TODO` | | | |
+| 1 | T0 | The initial frontend dependency install ran at the repository root, creating unintended root npm artifacts. | Git status and manifest inspection showed the files outside `frontend/`. | Removed the session-created root artifacts and reinstalled the specified packages in `frontend/`. |
 | 2 | `TODO` | | | |
 | 3 | `TODO` | | | |
 
