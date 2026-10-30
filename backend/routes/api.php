@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ReceivingDocumentController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{productId}', [ProductController::class, 'show'])->whereNumber('productId');
     Route::post('/products', [ProductController::class, 'store'])
+        ->middleware('role:SUPERVISOR');
+
+    Route::get('/receiving-documents', [ReceivingDocumentController::class, 'index']);
+    Route::post('/receiving-documents', [ReceivingDocumentController::class, 'store'])
+        ->middleware('role:SUPERVISOR');
+    Route::get('/receiving-documents/{documentId}', [ReceivingDocumentController::class, 'show'])
+        ->whereNumber('documentId');
+    Route::put('/receiving-documents/{documentId}', [ReceivingDocumentController::class, 'update'])
+        ->whereNumber('documentId')
         ->middleware('role:SUPERVISOR');
 });
 

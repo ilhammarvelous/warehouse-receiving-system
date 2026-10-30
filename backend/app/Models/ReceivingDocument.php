@@ -6,6 +6,7 @@ use App\Enums\DocumentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class ReceivingDocument extends Model
 {
@@ -44,7 +45,7 @@ class ReceivingDocument extends Model
         return $this->hasMany(ReceivingItem::class);
     }
 
-    public function receipts(): HasMany
+    public function receipts(): HasManyThrough
     {
         return $this->hasManyThrough(Receipt::class, ReceivingItem::class);
     }

@@ -84,8 +84,8 @@ Tasks are defined in `technical-spec.md` section 16.
 | T0 | Skeleton, Docker, health endpoint | `done` | `287774d` |
 | T1 | Database migrations, models, enums | `done` | `4b1f12b` |
 | T2 | Auth, role middleware, error handling | `done` | `5ccb6e8` |
-| T3 | Products | `done` | |
-| T4 | Receiving documents (create, list, detail, edit) | `TODO` | |
+| T3 | Products | `done` | `1095909` |
+| T4 | Receiving documents (create, list, detail, edit) | `done` | |
 | T5 | Document lifecycle (confirm, complete, cancel) | `TODO` | |
 | T6 | Receiving, idempotency, inventory endpoints | `TODO` | |
 | T7 | Backend hardening: concurrency tests, demo script | `TODO` | |
@@ -252,7 +252,7 @@ created, invalid SKU and name cases, Operator gets 403 (and 403 wins over 422), 
 | Problems found in review | The first search-pagination test fixture expected name-matched results before SKU-matched results, contrary to the specified ascending SKU order. |
 | Corrections made | Adjusted the fixture ordering and verified page contents against ascending SKU order; added a service-level test for mapping a unique-index race to `SKU_ALREADY_EXISTS`. |
 | Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 40 tests passed, 222 assertions; Pint: 68 files passed; `docker compose ps`: db, backend, and frontend healthy; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; product routes verified with `route:list`; `git diff --check` clean. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `1095909` (committed by the developer). |
 
 ### T4. Receiving documents
 
@@ -282,12 +282,12 @@ Do not implement confirm, complete, cancel, or receipts.
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Atomic UTC daily document numbering; Supervisor-only document create, list, detail, and DRAFT edit endpoints; request validation, aggregate list fields, eager-loaded detail resources, and PostgreSQL feature tests. |
+| Problems found in review | Initial document requests returned 500 because `ReceivingDocument::receipts()` declared `HasMany` while returning `HasManyThrough`; the original test coverage also did not exercise parallel numbering. |
+| Corrections made | Corrected the relationship return type and added a barrier-synchronized multiprocess test for unique numbers under concurrent generation, with isolated sequence cleanup. |
+| Verification run | After rebuilding the backend: `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 52 tests passed, 383 assertions; Pint: 82 files passed; document routes: 4 verified; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; db, backend, and frontend healthy; `git diff --check` clean. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T5. Document lifecycle (featured prompt)
 
