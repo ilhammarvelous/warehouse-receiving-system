@@ -83,8 +83,8 @@ Tasks are defined in `technical-spec.md` section 16.
 |---|---|---|---|
 | T0 | Skeleton, Docker, health endpoint | `done` | `287774d` |
 | T1 | Database migrations, models, enums | `done` | `4b1f12b` |
-| T2 | Auth, role middleware, error handling | `done` | |
-| T3 | Products | `TODO` | |
+| T2 | Auth, role middleware, error handling | `done` | `5ccb6e8` |
+| T3 | Products | `done` | |
 | T4 | Receiving documents (create, list, detail, edit) | `TODO` | |
 | T5 | Document lifecycle (confirm, complete, cancel) | `TODO` | |
 | T6 | Receiving, idempotency, inventory endpoints | `TODO` | |
@@ -223,7 +223,7 @@ Before coding: plan and assumptions. After: summary with requirement IDs covered
 | Problems found in review | The first test run used the pre-T2 container image. After rebuilding, seeded demo users also conflicted with fixed emails in test fixtures; the database-exception test used the wrong constructor signature, and the logout test needed to clear Laravel's cached test guard before checking the revoked token. |
 | Corrections made | Rebuilt the backend from the workspace; changed test fixtures to isolated email addresses, corrected the test exception construction, reset guards between logout requests, and formatted the PHP files with Pint. |
 | Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 32 tests passed, 163 assertions; Pint: 61 files passed; `docker compose ps`: db, backend, and frontend healthy; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; auth routes verified with `route:list`. |
-| Commit(s) | None; left uncommitted for developer review. |
+| Commit(s) | `5ccb6e8` (committed by the developer). |
 
 ### T3. Products
 
@@ -247,12 +247,12 @@ created, invalid SKU and name cases, Operator gets 403 (and 403 wins over 422), 
 
 | Field | Entry |
 |---|---|
-| Date / model | `TODO` |
-| What the agent produced | `TODO` |
-| Problems found in review | `TODO` |
-| Corrections made | `TODO` |
-| Verification run | `TODO` |
-| Commit(s) | `TODO` |
+| Date / model | 2026-10-30 / Copilot SDK in VS Code (model not surfaced) |
+| What the agent produced | Authenticated product list, search and detail endpoints; Supervisor-only product creation; request normalization and validation; transactional product plus zero-stock inventory creation; duplicate-SKU handling including unique-index races; PostgreSQL feature tests. |
+| Problems found in review | The first search-pagination test fixture expected name-matched results before SKU-matched results, contrary to the specified ascending SKU order. |
+| Corrections made | Adjusted the fixture ordering and verified page contents against ascending SKU order; added a service-level test for mapping a unique-index race to `SKU_ALREADY_EXISTS`. |
+| Verification run | `docker compose exec -T -e LOG_CHANNEL=null backend php artisan test`: 40 tests passed, 222 assertions; Pint: 68 files passed; `docker compose ps`: db, backend, and frontend healthy; `GET /api/v1/health`: 200 `{"status":"ok","database":"ok"}`; product routes verified with `route:list`; `git diff --check` clean. |
+| Commit(s) | None; left uncommitted for developer review. |
 
 ### T4. Receiving documents
 
